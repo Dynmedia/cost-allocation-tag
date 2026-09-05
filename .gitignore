@@ -1,23 +1,24 @@
 # Terraform
-.terraform/
-.terraform.lock.hcl
+**/.terraform/
 *.tfstate
 *.tfstate.*
 *.tfplan
 tfplan
+plan.txt
 crash.log
 
-# Local variable files (may contain emails / account-specific values)
-terraform.tfvars
+# Module tfvars holds an alert email; CI supplies notify_emails + budget via
+# TF_VAR_* repo variables instead. Keep terraform.tfvars.example committed.
+# NOTE: bootstrap/terraform.tfvars is intentionally committed (no secrets,
+# only repo/account/bucket names) so the bootstrap is reproducible.
+/terraform-ai-cost/terraform.tfvars
 *.auto.tfvars
 
-# Python
+# Python (the original toolkit)
 __pycache__/
 *.py[cod]
 .venv/
 venv/
-
-# Local config with real values
 config.json
 
 # OS / IDE
