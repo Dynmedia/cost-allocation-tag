@@ -1,0 +1,37 @@
+{
+  "region": "us-east-1",
+  "cost_explorer_region": "us-east-1",
+  "lookback_months": 6,
+  "granularity": "MONTHLY",
+
+  "q_agent": {
+    "service_names": [
+      "Amazon Q",
+      "Amazon Bedrock",
+      "Claude 3 (Amazon Bedrock Edition)"
+    ],
+    "usage_type_contains": ["Q-", "Agent", "Bedrock"]
+  },
+
+  "cost_allocation_tags": {
+    "activate_keys": ["Owner", "Workload", "CostCenter", "Environment"],
+    "resource_tags": {
+      "Owner": "platform-team",
+      "Workload": "amazon-q-agent",
+      "CostCenter": "AI-Platform",
+      "Environment": "production"
+    }
+  },
+
+  "budget": {
+    "name": "amazon-q-agent-monthly-budget",
+    "limit_amount": "500",
+    "limit_unit": "USD",
+    "time_unit": "MONTHLY",
+    "cost_filter_tag_key": "Workload",
+    "cost_filter_tag_value": "amazon-q-agent",
+    "notify_emails": ["you@example.com"],
+    "actual_thresholds_percent": [80, 100],
+    "forecasted_thresholds_percent": [100]
+  }
+}

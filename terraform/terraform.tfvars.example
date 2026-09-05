@@ -1,0 +1,9 @@
+# Copy to terraform.tfvars and edit before `terraform apply`.
+notify_emails         = ["ops@yourcompany.com"]
+budget_limit_amount   = "500"
+cost_filter_tag_key   = "Workload"
+cost_filter_tag_value = "amazon-q-agent"
+
+cost_allocation_tag_keys      = ["Owner", "Workload", "CostCenter", "Environment"]
+actual_thresholds_percent     = [80, 100]
+forecasted_thresholds_percent = [100]

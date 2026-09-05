@@ -1,0 +1,19 @@
+# Copy to terraform.tfvars and edit before `terraform apply`.
+
+aws_profile           = "mgt"
+management_account_id = "660571558619"
+
+# Real recipients for AI budget overrun alerts (required).
+notify_emails = ["finops@dynmedia.com"]
+
+# Monthly AI budget ceiling in USD. Current AI run-rate ~ $2,100/mo.
+budget_limit_amount = "3000"
+
+# Keys to activate as cost allocation tags (mirror the Config policy + AI).
+cost_allocation_tag_keys = [
+  "Owner", "Environment", "Project", "CostCenter", "Stage", "Team", "AI",
+]
+
+# Alert thresholds
+actual_thresholds_percent     = [80, 100]
+forecasted_thresholds_percent = [100]

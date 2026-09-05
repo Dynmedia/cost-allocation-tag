@@ -1,0 +1,12 @@
+{
+  "tags": {
+    "AI": {
+      "tag_key": {
+        "@@assign": "AI"
+      },
+      "tag_value": {
+        "@@assign": ["true", "false"]
+      }
+    }
+  }
+}
