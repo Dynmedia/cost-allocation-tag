@@ -35,6 +35,16 @@ variable "allowed_branches" {
   default     = ["main"]
 }
 
+variable "allowed_environments" {
+  description = <<-EOT
+    GitHub Actions environments allowed to assume the role. Jobs that declare
+    `environment: <name>` present a subject of repo:...:environment:<name>, so
+    the gated apply job (environment: production) needs this.
+  EOT
+  type        = list(string)
+  default     = ["production"]
+}
+
 variable "pipeline_role_name" {
   type    = string
   default = "gha-ai-cost-deployer"

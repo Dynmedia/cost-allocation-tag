@@ -14,8 +14,12 @@ variable "management_account_id" {
 variable "cost_allocation_tag_keys" {
   description = <<-EOT
     User-defined tag keys to ACTIVATE as cost allocation tags so they appear in
-    Cost Explorer. Should mirror the keys your AWS Config policy enforces, plus
-    the AI classification tag.
+    Cost Explorer. Mirrors the keys your AWS Config policy enforces.
+
+    NOTE: A key can only be activated AFTER AWS has seen it on at least one
+    resource. "AI" is intentionally NOT here yet, because no resource is tagged
+    AI=... in the org. Add "AI" once the tag policy has tagged something (and
+    flip enable_ai_tag_rule to true).
   EOT
   type        = list(string)
   default = [
@@ -25,7 +29,6 @@ variable "cost_allocation_tag_keys" {
     "CostCenter",
     "Stage",
     "Team",
-    "AI",
   ]
 }
 
@@ -42,29 +45,32 @@ variable "ai_tag_true_value" {
   default     = "true"
 }
 
-# --- AI service classification (catches usage-based AI spend w/o resources) --
-variable "ai_service_exact_matches" {
-  description = "Exact SERVICE names on the bill to classify as AI."
-  type        = list(string)
-  default = [
-    "Kiro",
-    "Amazon SageMaker",
-    "Amazon Lex",
-    "Amazon Polly",
-    "AWSDevOpsAgent",
-    "Q in Connect",
-  ]
+variable "enable_ai_tag_rule" {
+  description = <<-EOT
+    Include the AI=true tag rule in the Cost Category. Keep false until the AI
+    tag actually exists on resources; otherwise the category still works on the
+    SERVICE_CODE rules below. Flip to true once AI tagging is live.
+  EOT
+  type        = bool
+  default     = false
 }
 
-variable "ai_service_contains_matches" {
+# --- AI service classification (catches usage-based AI spend w/o resources) --
+variable "ai_service_code_contains" {
   description = <<-EOT
-    Substrings matched against SERVICE names to classify as AI. Using CONTAINS
-    keeps the rule stable as AWS adds new Bedrock model line items (e.g. new
-    Claude/Cohere/Stable "Amazon Bedrock Edition" entries).
+    Substrings matched against SERVICE_CODE (Cost Categories don't allow the
+    friendly SERVICE name). CONTAINS keeps rules stable as AWS adds new Bedrock
+    model line items (their service codes all contain "Bedrock").
+    Examples of SERVICE_CODE: AmazonBedrock, AmazonSageMaker, AmazonLex,
+    AmazonPolly.
   EOT
   type        = list(string)
   default = [
-    "Bedrock", # Amazon Bedrock, Amazon Bedrock AgentCore, and all "(Amazon Bedrock Edition)" models
+    "Bedrock",   # AmazonBedrock, Bedrock AgentCore, and all Bedrock-Edition models
+    "SageMaker", # AmazonSageMaker
+    "Kiro",      # Kiro
+    "Lex",       # AmazonLex
+    "Polly",     # AmazonPolly
   ]
 }
 

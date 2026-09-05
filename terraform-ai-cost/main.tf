@@ -21,37 +21,35 @@ resource "aws_ce_cost_category" "ai" {
   rule_version = "CostCategoryExpression.v1"
 
   # Rule A: anything explicitly tagged AI=true.
-  rule {
-    value = "AI"
-    rule {
-      tags {
-        key           = var.ai_tag_key
-        values        = [var.ai_tag_true_value]
-        match_options = ["EQUALS"]
-      }
-    }
-  }
-
-  # Rule B: known AI services matched exactly.
-  rule {
-    value = "AI"
-    rule {
-      dimension {
-        key           = "SERVICE"
-        values        = var.ai_service_exact_matches
-        match_options = ["EQUALS"]
-      }
-    }
-  }
-
-  # Rule C: AI services matched by substring (stable across new Bedrock models).
+  # Guarded by var.enable_ai_tag_rule: only include this once the AI tag has
+  # been ACTIVATED as a cost allocation tag (which itself requires the tag to
+  # exist on at least one resource). Until then, tag-based matching isn't
+  # available and the category runs on the SERVICE_CODE rules below.
   dynamic "rule" {
-    for_each = var.ai_service_contains_matches
+    for_each = var.enable_ai_tag_rule ? [1] : []
+    content {
+      value = "AI"
+      rule {
+        tags {
+          key           = var.ai_tag_key
+          values        = [var.ai_tag_true_value]
+          match_options = ["EQUALS"]
+        }
+      }
+    }
+  }
+
+  # Rule B: known AI services matched by SERVICE_CODE substring.
+  # Cost Categories only allow SERVICE_CODE (not the friendly SERVICE name), and
+  # CONTAINS keeps this stable as AWS adds new Bedrock model line items
+  # (their codes all contain "Bedrock").
+  dynamic "rule" {
+    for_each = var.ai_service_code_contains
     content {
       value = "AI"
       rule {
         dimension {
-          key           = "SERVICE"
+          key           = "SERVICE_CODE"
           values        = [rule.value]
           match_options = ["CONTAINS"]
         }

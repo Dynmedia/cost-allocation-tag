@@ -58,12 +58,21 @@ resource "aws_iam_openid_connect_provider" "github" {
 locals {
   oidc_provider_arn = var.reuse_existing_oidc_provider ? data.aws_iam_openid_connect_provider.existing_github[0].arn : aws_iam_openid_connect_provider.github[0].arn
 
-  # Subject claims allowed to assume the role:
-  #  - each protected branch (for apply on merge)
-  #  - pull_request context (for plan on PRs)
+  # Subject claims allowed to assume the role.
+  #
+  # NOTE: This GitHub org enforces ID-decorated OIDC subjects, so the real claim
+  # looks like:
+  #   repo:Dynmedia@114440991/cost-allocation-tag@1358496655:ref:refs/heads/main
+  # not the plain "repo:Dynmedia/cost-allocation-tag:...". We use "*" wildcards
+  # for the optional "@<numeric-id>" segments (StringLike) so the policy matches
+  # whether or not IDs are present, and survives ID changes.
+  # Jobs that declare `environment: <name>` get an environment-scoped subject
+  # (repo:...:environment:<name>) instead of the branch/PR form. The Apply job
+  # uses `environment: production`, so that pattern must be allowed too.
   allowed_subs = concat(
-    [for b in var.allowed_branches : "repo:${var.github_org}/${var.github_repo}:ref:refs/heads/${b}"],
-    ["repo:${var.github_org}/${var.github_repo}:pull_request"],
+    [for b in var.allowed_branches : "repo:${var.github_org}*/${var.github_repo}*:ref:refs/heads/${b}"],
+    [for e in var.allowed_environments : "repo:${var.github_org}*/${var.github_repo}*:environment:${e}"],
+    ["repo:${var.github_org}*/${var.github_repo}*:pull_request"],
   )
 }
 
