@@ -1,0 +1,14 @@
+# Terraform working files.
+.terraform/
+*.tfstate.backup
+crash.log
+tfplan
+plan.txt
+
+# NOTE: bootstrap uses LOCAL state intentionally (it creates the very bucket
+# remote state would live in). If you want the bootstrap state version-
+# controlled, REMOVE the two lines below and commit terraform.tfstate.
+*.tfstate
+
+# Keep the lock file committed.
+!.terraform.lock.hcl

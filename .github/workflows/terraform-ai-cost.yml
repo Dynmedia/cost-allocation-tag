@@ -1,0 +1,150 @@
+name: terraform-ai-cost
+
+# CI/CD for the AI cost visibility module (management account 660571558619).
+#   - Pull request  -> fmt check, init, validate, plan (read-only preview)
+#   - Push to main  -> plan, then gated apply (via `production` environment)
+#
+# Auth is via GitHub OIDC into an IAM role in the management account. No
+# long-lived AWS keys are stored in GitHub.
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "terraform-ai-cost/**"
+      - ".github/workflows/terraform-ai-cost.yml"
+  push:
+    branches: [main]
+    paths:
+      - "terraform-ai-cost/**"
+      - ".github/workflows/terraform-ai-cost.yml"
+
+# Required for OIDC: the job needs to request the JWT.
+permissions:
+  id-token: write   # request the OIDC token
+  contents: read    # checkout
+  pull-requests: write  # post the plan as a PR comment
+
+env:
+  TF_VERSION: "1.16.1"
+  AWS_REGION: "us-east-1"
+  WORKING_DIR: "terraform-ai-cost"
+  # In CI we authenticate via OIDC env creds, so no AWS profile.
+  TF_VAR_aws_profile: ""
+  # terraform.tfvars is gitignored (may hold email/account values), so CI
+  # supplies the required variables here from GitHub repo variables.
+  # Set these under Settings -> Secrets and variables -> Actions -> Variables:
+  #   AI_NOTIFY_EMAILS   e.g. ["ahmed.sajib@dynmedia.com"]  (HCL list syntax)
+  #   AI_BUDGET_LIMIT    e.g. 3000
+  TF_VAR_notify_emails: ${{ vars.AI_NOTIFY_EMAILS }}
+  TF_VAR_budget_limit_amount: ${{ vars.AI_BUDGET_LIMIT }}
+
+concurrency:
+  # Never run two applies against the same state at once.
+  group: terraform-ai-cost-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  plan:
+    name: Plan
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ${{ env.WORKING_DIR }}
+    outputs:
+      plan_exitcode: ${{ steps.plan.outputs.exitcode }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+          role-session-name: gha-ai-cost-plan
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+
+      - name: Terraform fmt (check)
+        run: terraform fmt -check -recursive
+
+      - name: Terraform init
+        run: terraform init -input=false
+
+      - name: Terraform validate
+        run: terraform validate -no-color
+
+      - name: Terraform plan
+        id: plan
+        run: |
+          terraform plan -input=false -no-color -out=tfplan
+          terraform show -no-color tfplan > plan.txt
+
+      - name: Upload plan artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: tfplan
+          path: |
+            ${{ env.WORKING_DIR }}/tfplan
+            ${{ env.WORKING_DIR }}/plan.txt
+          retention-days: 5
+
+      - name: Comment plan on PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const plan = fs.readFileSync(`${process.env.WORKING_DIR}/plan.txt`, 'utf8');
+            const body = [
+              '#### Terraform Plan — AI cost module',
+              '```',
+              plan.length > 60000 ? plan.slice(0, 60000) + '\n...(truncated)' : plan,
+              '```',
+            ].join('\n');
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body,
+            });
+
+  apply:
+    name: Apply
+    needs: plan
+    # Only apply on push to main, never on PRs.
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    # Gate: this environment should have "Required reviewers" enabled in GitHub
+    # so a human approves before apply runs.
+    environment: production
+    defaults:
+      run:
+        working-directory: ${{ env.WORKING_DIR }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+          role-session-name: gha-ai-cost-apply
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+
+      - name: Download plan artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: tfplan
+          path: ${{ env.WORKING_DIR }}
+
+      - name: Terraform init
+        run: terraform init -input=false
+
+      - name: Terraform apply
+        run: terraform apply -input=false -no-color tfplan

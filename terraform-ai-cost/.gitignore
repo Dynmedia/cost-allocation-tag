@@ -1,0 +1,14 @@
+# Terraform working files — never commit these.
+.terraform/
+*.tfstate
+*.tfstate.*
+crash.log
+tfplan
+plan.txt
+
+# DO commit .terraform.lock.hcl so CI resolves the exact same provider
+# versions as local runs — it is intentionally NOT ignored here.
+
+# terraform.tfvars is intentionally IGNORED (root .gitignore). It may hold an
+# email/account values; CI supplies notify_emails + budget via TF_VAR_* repo
+# variables. Use terraform.tfvars.example as the committed template.

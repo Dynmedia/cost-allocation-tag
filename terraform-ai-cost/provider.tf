@@ -26,8 +26,10 @@ terraform {
 provider "aws" {
   # Billing/Cost Explorer/Budgets/Cost Categories are global services reached
   # through us-east-1, regardless of where workloads run.
-  region  = "us-east-1"
-  profile = var.aws_profile
+  region = "us-east-1"
+
+  # Local runs set aws_profile="mgt"; CI leaves it empty so OIDC env creds win.
+  profile = var.aws_profile != "" ? var.aws_profile : null
 
   # Safety rail: refuse to apply unless we are in the management account.
   allowed_account_ids = [var.management_account_id]
