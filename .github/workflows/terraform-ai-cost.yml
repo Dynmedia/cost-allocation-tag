@@ -35,9 +35,11 @@ env:
   # supplies the required variables here from GitHub repo variables.
   # Set these under Settings -> Secrets and variables -> Actions -> Variables:
   #   AI_NOTIFY_EMAILS   e.g. ["ahmed.sajib@dynmedia.com"]  (HCL list syntax)
-  #   AI_BUDGET_LIMIT    e.g. 3000
+  # Budget amounts default to 5000 in the module; override with repo variables
+  # AI_DEVELOPER_BUDGET / AI_PRODUCT_BUDGET only if you want different ceilings.
   TF_VAR_notify_emails: ${{ vars.AI_NOTIFY_EMAILS }}
-  TF_VAR_budget_limit_amount: ${{ vars.AI_BUDGET_LIMIT }}
+  TF_VAR_developer_budget_amount: ${{ vars.AI_DEVELOPER_BUDGET || '5000' }}
+  TF_VAR_product_budget_amount: ${{ vars.AI_PRODUCT_BUDGET || '5000' }}
 
 concurrency:
   # Never run two applies against the same state at once.

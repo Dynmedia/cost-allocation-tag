@@ -53,11 +53,13 @@ Repo → **Settings → Secrets and variables → Actions → Variables → New 
 |------|-------|
 | `AWS_ROLE_ARN` | the `pipeline_role_arn` output from step 1 (e.g. `arn:aws:iam::660571558619:role/gha-ai-cost-deployer`) |
 | `AI_NOTIFY_EMAILS` | budget alert recipients in HCL list form, e.g. `["ahmed.sajib@dynmedia.com"]` |
-| `AI_BUDGET_LIMIT` | monthly budget ceiling in USD, e.g. `3000` |
+| `AI_DEVELOPER_BUDGET` | *(optional)* developer monthly ceiling in USD; defaults to `5000` |
+| `AI_PRODUCT_BUDGET` | *(optional)* product monthly ceiling in USD; defaults to `5000` |
 
-These are **variables**, not secrets — a role ARN, an internal email, and a
-budget number are not sensitive. `AI_NOTIFY_EMAILS` / `AI_BUDGET_LIMIT` replace
-the gitignored `terraform.tfvars` for CI runs.
+`AWS_ROLE_ARN` and `AI_NOTIFY_EMAILS` are required. The two budget amounts are
+optional — the module defaults both to `5000`. These are **variables**, not
+secrets (a role ARN, an internal email, and budget numbers are not sensitive),
+and they replace the gitignored `terraform.tfvars` for CI runs.
 
 ### 4. Create the `production` environment (the apply gate)
 

@@ -1,0 +1,15 @@
+{
+  "tags": {
+    "AIWorkload": {
+      "tag_key": {
+        "@@assign": "AIWorkload"
+      },
+      "tag_value": {
+        "@@assign": ["developer", "product", "platform"]
+      },
+      "enforced_for": {
+        "@@assign": []
+      }
+    }
+  }
+}

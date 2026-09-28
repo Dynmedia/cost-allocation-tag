@@ -1,5 +1,5 @@
 variable "aws_profile" {
-  description = "AWS CLI profile for the MANAGEMENT account (payer)."
+  description = "AWS CLI profile for the MANAGEMENT account (payer). Empty in CI (OIDC)."
   type        = string
   default     = "mgt"
 }
@@ -14,12 +14,12 @@ variable "management_account_id" {
 variable "cost_allocation_tag_keys" {
   description = <<-EOT
     User-defined tag keys to ACTIVATE as cost allocation tags so they appear in
-    Cost Explorer. Mirrors the keys your AWS Config policy enforces.
+    Cost Explorer. Mirrors the keys your AWS Config policy enforces, plus the
+    existing Product key.
 
-    NOTE: A key can only be activated AFTER AWS has seen it on at least one
-    resource. "AI" is intentionally NOT here yet, because no resource is tagged
-    AI=... in the org. Add "AI" once the tag policy has tagged something (and
-    flip enable_ai_tag_rule to true).
+    NOTE: A key can only be activated AFTER AWS has seen it on a resource.
+    "AIWorkload" is NOT here yet (no resource carries it). Add it once tagging
+    is live (see enable_aiworkload_activation).
   EOT
   type        = list(string)
   default = [
@@ -29,69 +29,110 @@ variable "cost_allocation_tag_keys" {
     "CostCenter",
     "Stage",
     "Team",
+    "Product",
   ]
 }
 
-# --- AI classification tag ---------------------------------------------------
-variable "ai_tag_key" {
-  description = "Tag key used to classify AI resources."
-  type        = string
-  default     = "AI"
+# --- Account-based AI attribution (works TODAY) -----------------------------
+# Your AI spend is usage-shaped (Kiro subscription + on-demand Bedrock), so it
+# has almost no taggable resource. LINKED_ACCOUNT is the dimension that actually
+# carries the signal, so the Cost Category + budgets attribute AI cost by which
+# account incurs it. Edit these lists to remap; removing an account is one line.
+variable "ai_developer_accounts" {
+  description = "Linked account IDs whose AI spend is developer/tooling."
+  type        = map(string) # id => human label (label is just for readability)
+  default = {
+    "660571558619" = "dyn media (Kiro)"
+    "982081082306" = "dyn-api-toolkit-dev"
+    "905418363445" = "dyn-generate-article-dev"
+    "920263653563" = "dyn-connect-dev"
+    "400398152715" = "dyn-connect-staging"
+    "893945595122" = "sandbox-fabian"
+    "905418329225" = "sandbox-niklas"
+  }
 }
 
-variable "ai_tag_true_value" {
-  description = "Tag value that marks a resource as AI-related."
-  type        = string
-  default     = "true"
+variable "ai_product_accounts" {
+  description = "Linked account IDs whose AI spend is product (customer-facing)."
+  type        = map(string)
+  default = {
+    "381492097421" = "dyn-generate-article-prod"
+    "660249532472" = "dyn-connect-prod"
+    "122610502176" = "dyn-api-toolkit-prod"
+  }
 }
 
-variable "enable_ai_tag_rule" {
+# --- AIWorkload classification tag (forward-looking) ------------------------
+variable "aiworkload_tag_key" {
+  description = "Tag key for classifying taggable AI resources when they exist."
+  type        = string
+  default     = "AIWorkload"
+}
+
+variable "enable_aiworkload_activation" {
   description = <<-EOT
-    Include the AI=true tag rule in the Cost Category. Keep false until the AI
-    tag actually exists on resources; otherwise the category still works on the
-    SERVICE_CODE rules below. Flip to true once AI tagging is live.
+    Activate AIWorkload as a cost allocation tag. Keep false until at least one
+    resource is tagged AIWorkload=... (AWS rejects activating an unseen key).
   EOT
   type        = bool
   default     = false
 }
 
-# --- AI service classification (catches usage-based AI spend w/o resources) --
-variable "ai_service_code_contains" {
+variable "enable_aiworkload_category_rules" {
   description = <<-EOT
-    Substrings matched against SERVICE_CODE (Cost Categories don't allow the
-    friendly SERVICE name). CONTAINS keeps rules stable as AWS adds new Bedrock
-    model line items (their service codes all contain "Bedrock").
-    Examples of SERVICE_CODE: AmazonBedrock, AmazonSageMaker, AmazonLex,
-    AmazonPolly.
+    Add AIWorkload tag rules to the Cost Category (developer/product). Keep false
+    until the tag exists; account-based rules carry attribution until then.
   EOT
-  type        = list(string)
-  default = [
-    "Bedrock",   # AmazonBedrock, Bedrock AgentCore, and all Bedrock-Edition models
-    "SageMaker", # AmazonSageMaker
-    "Kiro",      # Kiro
-    "Lex",       # AmazonLex
-    "Polly",     # AmazonPolly
-  ]
+  type        = bool
+  default     = false
 }
 
-# --- Budget / alerts ---------------------------------------------------------
-variable "budget_name" {
-  type    = string
-  default = "ai-spend-monthly-budget"
+# --- Budgets ----------------------------------------------------------------
+# IMPORTANT: a budget's LinkedAccount filter captures TOTAL account spend, not
+# just AI. So the budget account sets must EXCLUDE accounts with large non-AI
+# cost (notably the management account 660571558619, whose $18k/mo is mostly
+# shared org cost, not its $1.4k Kiro). These sets are therefore narrower than
+# the Cost Category account sets. Kiro is tracked via the Cost Category, not the
+# developer budget.
+variable "developer_budget_accounts" {
+  description = "Accounts for the developer budget (predominantly-AI accounts only)."
+  type        = map(string)
+  default = {
+    "982081082306" = "dyn-api-toolkit-dev"
+    "905418363445" = "dyn-generate-article-dev"
+    "920263653563" = "dyn-connect-dev"
+    "400398152715" = "dyn-connect-staging"
+    "893945595122" = "sandbox-fabian"
+    "905418329225" = "sandbox-niklas"
+  }
 }
 
-variable "budget_limit_amount" {
-  description = "Monthly AI budget ceiling (string, USD)."
+variable "product_budget_accounts" {
+  description = "Accounts for the product budget (predominantly-AI accounts only)."
+  type        = map(string)
+  default = {
+    "381492097421" = "dyn-generate-article-prod"
+    "660249532472" = "dyn-connect-prod"
+    "122610502176" = "dyn-api-toolkit-prod"
+  }
+}
+
+variable "developer_budget_amount" {
+  description = "Monthly ceiling (USD) for developer AI spend."
   type        = string
-  # Current AI spend ~ $2,100/mo (Kiro ~1,462 + Bedrock family ~600).
-  # Set the ceiling above current run-rate so alerts flag GROWTH, not steady state.
-  default = "3000"
+  default     = "5000"
+}
+
+variable "product_budget_amount" {
+  description = "Monthly ceiling (USD) for product AI spend."
+  type        = string
+  default     = "5000"
 }
 
 variable "notify_emails" {
   description = "Emails that receive AI budget overrun alerts."
   type        = list(string)
-  # No default on purpose: force a real address at apply time.
+  # No default: force a real address at apply time (CI passes TF_VAR_notify_emails).
 }
 
 variable "actual_thresholds_percent" {
