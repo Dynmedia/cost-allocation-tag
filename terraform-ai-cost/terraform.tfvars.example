@@ -17,3 +17,5 @@ cost_allocation_tag_keys = [
 # Alert thresholds
 actual_thresholds_percent     = [80, 100]
 forecasted_thresholds_percent = [100]
+
+# pipeline trigger: 2026-09-28T06:40:20Z
