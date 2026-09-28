@@ -131,7 +131,8 @@ data "aws_iam_policy_document" "permissions" {
     resources = ["*"]
   }
 
-  # AWS Budgets.
+  # AWS Budgets. Includes tag actions: the AWS provider calls
+  # ListTagsForResource after create to populate tags_all.
   statement {
     sid    = "Budgets"
     effect = "Allow"
@@ -142,6 +143,9 @@ data "aws_iam_policy_document" "permissions" {
       "budgets:DeleteBudget",
       "budgets:DescribeBudget",
       "budgets:DescribeBudgetAction",
+      "budgets:ListTagsForResource",
+      "budgets:TagResource",
+      "budgets:UntagResource",
     ]
     resources = ["*"]
   }
