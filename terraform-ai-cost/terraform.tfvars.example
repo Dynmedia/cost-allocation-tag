@@ -9,9 +9,10 @@ notify_emails = ["finops@dynmedia.com"]
 # Monthly AI budget ceiling in USD. Current AI run-rate ~ $2,100/mo.
 budget_limit_amount = "3000"
 
-# Keys to activate as cost allocation tags (mirror the Config policy + AI).
+# Lowercase standard keys to activate as cost allocation tags (only keys that
+# Billing has already seen on a resource; see variables.tf).
 cost_allocation_tag_keys = [
-  "Owner", "Environment", "Project", "CostCenter", "Stage", "Team", "AI",
+  "owner", "environment", "project", "team", "product",
 ]
 
 # Alert thresholds
