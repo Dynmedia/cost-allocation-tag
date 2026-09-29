@@ -1,14 +1,18 @@
 ###############################################################################
 # 1. Activate cost allocation tags
-#    Makes the tag keys your Config policy enforces (+ Product) usable as cost
-#    dimensions in Cost Explorer and budgets. Applies org-wide via the payer.
+#    Makes the standard tag keys (+ product) usable as cost dimensions in Cost
+#    Explorer and budgets. Applies org-wide via the payer.
 #
-#    AIWorkload is activated only when enable_aiworkload_activation = true
+#    Both spellings are active during the lowercase migration: the lowercase
+#    standard keys and the legacy PascalCase keys (case-sensitive in Billing).
+#
+#    aiworkload is activated only when enable_aiworkload_activation = true
 #    (a key can't be activated until AWS has seen it on a resource).
 ###############################################################################
 locals {
   activation_keys = concat(
     var.cost_allocation_tag_keys,
+    var.legacy_cost_allocation_tag_keys,
     var.enable_aiworkload_activation ? [var.aiworkload_tag_key] : [],
   )
 
@@ -34,7 +38,7 @@ resource "aws_ce_cost_allocation_tag" "activated" {
 #    subscription + on-demand Bedrock, with almost no taggable resource, so the
 #    account is what actually carries the signal).
 #
-#    Optionally ALSO match the AIWorkload tag once tagging is live, so tagged
+#    Optionally ALSO match the aiworkload tag once tagging is live, so tagged
 #    resources are classified even if they sit in a "mixed" account.
 ###############################################################################
 resource "aws_ce_cost_category" "ai_attribution" {
@@ -65,7 +69,7 @@ resource "aws_ce_cost_category" "ai_attribution" {
     }
   }
 
-  # developer: by AIWorkload tag (optional, once tag exists)
+  # developer: by aiworkload tag (optional, once tag exists)
   dynamic "rule" {
     for_each = var.enable_aiworkload_category_rules ? [1] : []
     content {
@@ -80,7 +84,7 @@ resource "aws_ce_cost_category" "ai_attribution" {
     }
   }
 
-  # product: by AIWorkload tag (optional, once tag exists)
+  # product: by aiworkload tag (optional, once tag exists)
   dynamic "rule" {
     for_each = var.enable_aiworkload_category_rules ? [1] : []
     content {

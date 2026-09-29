@@ -24,8 +24,15 @@ They connect only through the shared tag **key strings**.
 
 ## What it creates
 
-1. **Cost allocation tag activation** for the keys your Config policy enforces
-   (`Owner`, `Environment`, `Project`, `CostCenter`, `Stage`, `Team`) plus `AI`.
+1. **Cost allocation tag activation** for the standard keys. Since Sep 2026 the
+   standard is **lowercase** (`owner`, `environment`, `project`, `costcenter`,
+   `stage`, `team`, `aiworkload`), matching the org tag policy and the Config
+   rule. Billing keys are case-sensitive, so during the migration both
+   spellings are active: `cost_allocation_tag_keys` (lowercase) and
+   `legacy_cost_allocation_tag_keys` (PascalCase). `costcenter`, `stage` and
+   `aiworkload` are added once Billing has seen them on a resource (AWS rejects
+   activating an unseen key). In Cost Explorer, `owner` and `Owner` are separate
+   groupings until the old spelling is retired.
 2. **An "AI" Cost Category** = resources tagged `AI=true` **OR** known AI
    services. The service rules catch usage-based AI cost that has no taggable
    resource (on-demand Bedrock model invocations, Kiro, etc.):

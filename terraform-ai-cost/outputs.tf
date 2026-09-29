@@ -24,7 +24,7 @@ output "notes" {
       LINKED_ACCOUNT. See it in Cost Explorer (group by Cost Category), ~24h.
     - Budgets filter by LinkedAccount, so they track TOTAL account spend, not
       only AI. Only put accounts here whose spend is predominantly AI.
-    - When taggable AI infra exists: tag it AIWorkload=developer|product|platform,
+    - When taggable AI infra exists: tag it aiworkload=developer|product|platform,
       then set enable_aiworkload_activation + enable_aiworkload_category_rules.
   EOT
 }

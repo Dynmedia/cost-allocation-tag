@@ -13,13 +13,36 @@ variable "management_account_id" {
 # --- Cost allocation tag activation -----------------------------------------
 variable "cost_allocation_tag_keys" {
   description = <<-EOT
-    User-defined tag keys to ACTIVATE as cost allocation tags so they appear in
-    Cost Explorer. Mirrors the keys your AWS Config policy enforces, plus the
-    existing Product key.
+    LOWERCASE standard tag keys to ACTIVATE as cost allocation tags so they
+    appear in Cost Explorer. Matches the org tag policy and the AWS Config
+    REQUIRED_TAGS rule (keys are lowercase since Sep 2026), plus product.
 
-    NOTE: A key can only be activated AFTER AWS has seen it on a resource.
-    "AIWorkload" is NOT here yet (no resource carries it). Add it once tagging
-    is live (see enable_aiworkload_activation).
+    Billing tag keys are CASE-SENSITIVE: "owner" and "Owner" are two separate
+    cost allocation tags.
+
+    NOTE: A key can only be activated AFTER AWS Billing has seen it on a
+    resource, otherwise the apply fails. Not listed yet (Billing hasn't seen
+    them as of 2026-09-30): "costcenter", "stage". Add each one once
+    `aws ce list-cost-allocation-tags --tag-keys <key>` (us-east-1, management
+    account) returns it. "aiworkload" is handled by enable_aiworkload_activation.
+  EOT
+  type        = list(string)
+  default = [
+    "owner",
+    "environment",
+    "project",
+    "team",
+    "product",
+  ]
+}
+
+variable "legacy_cost_allocation_tag_keys" {
+  description = <<-EOT
+    PascalCase keys from the pre-Sep-2026 standard. Kept ACTIVE during the
+    migration so spend on resources that still carry them stays attributable and
+    existing Cost Explorer reports keep working. Removing a key here DEACTIVATES
+    it (new costs stop being grouped under it; history is kept). Remove once no
+    resource uses the old spelling.
   EOT
   type        = list(string)
   default = [
@@ -62,17 +85,17 @@ variable "ai_product_accounts" {
   }
 }
 
-# --- AIWorkload classification tag (forward-looking) ------------------------
+# --- aiworkload classification tag (forward-looking) ------------------------
 variable "aiworkload_tag_key" {
   description = "Tag key for classifying taggable AI resources when they exist."
   type        = string
-  default     = "AIWorkload"
+  default     = "aiworkload"
 }
 
 variable "enable_aiworkload_activation" {
   description = <<-EOT
-    Activate AIWorkload as a cost allocation tag. Keep false until at least one
-    resource is tagged AIWorkload=... (AWS rejects activating an unseen key).
+    Activate aiworkload as a cost allocation tag. Keep false until at least one
+    resource is tagged aiworkload=... (AWS rejects activating an unseen key).
   EOT
   type        = bool
   default     = false
@@ -80,7 +103,7 @@ variable "enable_aiworkload_activation" {
 
 variable "enable_aiworkload_category_rules" {
   description = <<-EOT
-    Add AIWorkload tag rules to the Cost Category (developer/product). Keep false
+    Add aiworkload tag rules to the Cost Category (developer/product). Keep false
     until the tag exists; account-based rules carry attribution until then.
   EOT
   type        = bool
