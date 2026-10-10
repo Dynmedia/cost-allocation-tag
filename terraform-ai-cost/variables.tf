@@ -49,49 +49,33 @@ variable "cost_allocation_tag_keys" {
 
 variable "legacy_cost_allocation_tag_keys" {
   description = <<-EOT
-    Superseded key spellings, kept ACTIVE during the migration so spend on
-    resources that still carry them stays attributable and existing Cost
-    Explorer reports keep working.
+    Superseded key spellings to keep ACTIVE as cost allocation tags during a
+    migration, so spend on resources that still carry them stays groupable in
+    Cost Explorer.
 
-    Two generations are listed, because the standard was renamed twice:
-      * PascalCase without a prefix (the original standard).
-      * all-lowercase with a `dyn-` prefix (Sep-Oct 2026, short-lived).
+    EMPTY as of 2026-10-10: every superseded spelling has now been
+    deactivated by request, in two steps.
 
-    Removing a key here DEACTIVATES it: new costs stop being grouped under it,
-    though history is kept. Only remove a spelling once no resource still uses
-    it -- check with the AWS Config aggregator or Tag Editor, not by assuming.
+      1. The all-lowercase generation ("owner", "environment", "project",
+         "team") -- then on ~4,657 / ~5,744 / 185 / 17 resources.
+      2. The original PascalCase generation ("Environment", "Project",
+         "CostCenter", "Stage", "Team", "Product") -- then on 270 / 315 / 32
+         / 1 / 1 / 24 resources.
 
-    DEACTIVATED on 2026-10-10 (by request): the all-lowercase spellings
-    "owner", "environment", "project" and "team". They were still carried by
-    real resources at the time -- ~4,657 on `environment`, ~5,744 on
-    `project`, 185 on `team`, 17 on `owner`, per the Config aggregator -- so
-    that spend (overwhelmingly DCC, whose CDK app sets those keys) now has no
-    tag-based grouping in Cost Explorer until it is retagged to the `Dyn-`
-    keys. Historical cost data under the old keys is retained; only NEW costs
-    stop being grouped.
+    So roughly 11,000 resources' spend no longer groups by any tag, because
+    the resources carrying those keys have not been retagged to the `Dyn-`
+    standard (only ~25 resources org-wide carried `Dyn-*` at the time).
+    Historical cost data under the old keys is retained; only NEW costs stop
+    being grouped. Retagging the workloads -- DCC's CDK app above all -- is
+    what restores grouping, not re-activating keys here.
 
-    Re-adding a key here reactivates it, so this is reversible.
-
+    Re-adding a spelling reactivates it, so both steps are reversible.
     "costcenter", "stage" and the lowercase "dyn-*" spellings were never
-    activated at all -- Billing has never seen them on a resource, and
+    activated at all: Billing has never seen them on a resource, and
     activating an unseen key fails the apply.
   EOT
   type        = list(string)
-  default = [
-    # Original PascalCase standard. "Owner" is absent here because it is
-    # still part of the CURRENT standard (it never took a prefix), so it
-    # lives in cost_allocation_tag_keys instead.
-    "Environment",
-    "Project",
-    "CostCenter",
-    "Stage",
-    "Team",
-    "Product",
-    # The all-lowercase generation ("owner", "environment", "project",
-    # "team") was deliberately REMOVED on 2026-10-10 -- see the description
-    # above for what that gave up. Do not re-add without deciding that the
-    # spend carrying those keys should be grouped again.
-  ]
+  default     = []
 }
 
 # --- Account-based AI attribution (works TODAY) -----------------------------
