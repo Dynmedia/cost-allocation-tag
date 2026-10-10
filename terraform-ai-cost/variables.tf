@@ -61,15 +61,20 @@ variable "legacy_cost_allocation_tag_keys" {
     though history is kept. Only remove a spelling once no resource still uses
     it -- check with the AWS Config aggregator or Tag Editor, not by assuming.
 
-    Deactivating a spelling is NOT a safe default here. The lowercase
-    unprefixed keys in particular are still carried by real, costly
-    resources: the DCC CDK app tags everything it deploys with `environment`
-    and `project` (~6,000 and ~7,000 resources, per the Config aggregator),
-    so dropping them would silently stop grouping that spend. They stay.
+    DEACTIVATED on 2026-10-10 (by request): the all-lowercase spellings
+    "owner", "environment", "project" and "team". They were still carried by
+    real resources at the time -- ~4,657 on `environment`, ~5,744 on
+    `project`, 185 on `team`, 17 on `owner`, per the Config aggregator -- so
+    that spend (overwhelmingly DCC, whose CDK app sets those keys) now has no
+    tag-based grouping in Cost Explorer until it is retagged to the `Dyn-`
+    keys. Historical cost data under the old keys is retained; only NEW costs
+    stop being grouped.
 
-    Only "costcenter", "stage" and "dyn-*" lowercase spellings are absent --
-    Billing has never seen those on any resource, so they cannot be activated
-    at all (an unseen key fails the apply).
+    Re-adding a key here reactivates it, so this is reversible.
+
+    "costcenter", "stage" and the lowercase "dyn-*" spellings were never
+    activated at all -- Billing has never seen them on a resource, and
+    activating an unseen key fails the apply.
   EOT
   type        = list(string)
   default = [
@@ -82,13 +87,10 @@ variable "legacy_cost_allocation_tag_keys" {
     "Stage",
     "Team",
     "Product",
-    # Short-lived all-lowercase generation. Only the spellings Billing has
-    # actually seen are listed; "costcenter" and "stage" never appeared on a
-    # resource, so they are not (and cannot be) activated.
-    "owner",
-    "environment",
-    "project",
-    "team",
+    # The all-lowercase generation ("owner", "environment", "project",
+    # "team") was deliberately REMOVED on 2026-10-10 -- see the description
+    # above for what that gave up. Do not re-add without deciding that the
+    # spend carrying those keys should be grouped again.
   ]
 }
 
