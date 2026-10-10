@@ -12,7 +12,8 @@ budget_limit_amount = "3000"
 # Lowercase standard keys to activate as cost allocation tags (only keys that
 # Billing has already seen on a resource; see variables.tf).
 cost_allocation_tag_keys = [
-  "owner", "environment", "project", "team", "product",
+  "Owner", "Dyn-Environment", "Dyn-Project", "Dyn-CostCenter",
+  "Dyn-Stage", "Dyn-Team", "product",
 ]
 
 # Alert thresholds
