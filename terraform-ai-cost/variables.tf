@@ -13,46 +13,82 @@ variable "management_account_id" {
 # --- Cost allocation tag activation -----------------------------------------
 variable "cost_allocation_tag_keys" {
   description = <<-EOT
-    LOWERCASE standard tag keys to ACTIVATE as cost allocation tags so they
-    appear in Cost Explorer. Matches the org tag policy and the AWS Config
-    REQUIRED_TAGS rule (keys are lowercase since Sep 2026), plus product.
+    The CURRENT standard tag keys to ACTIVATE as cost allocation tags, so they
+    appear in Cost Explorer. Matches the org tag policy (p-957g5s40o6) and the
+    AWS Config REQUIRED_TAGS rule: PascalCase with a `Dyn-` prefix since
+    Oct 2026, except `Owner`, which carries no prefix. Plus the pre-existing
+    `product` key, which is not part of the tagging standard.
 
-    Billing tag keys are CASE-SENSITIVE: "owner" and "Owner" are two separate
-    cost allocation tags.
+    Billing tag keys are CASE-SENSITIVE: "Dyn-Team", "dyn-team" and "team" are
+    three separate cost allocation tags. That is why the superseded spellings
+    are kept in legacy_cost_allocation_tag_keys rather than edited in place.
 
-    NOTE: A key can only be activated AFTER AWS Billing has seen it on a
-    resource, otherwise the apply fails. Not listed yet (Billing hasn't seen
-    them as of 2026-09-30): "costcenter", "stage". Add each one once
-    `aws ce list-cost-allocation-tags --tag-keys <key>` (us-east-1, management
-    account) returns it. "aiworkload" is handled by enable_aiworkload_activation.
+    NOTE: a key can only be activated AFTER AWS Billing has seen it on a real
+    resource; activating an unseen key fails the apply. All five Dyn- keys
+    below were live-verified as seen (Inactive, lastUsed 2026-10-01) on
+    2026-10-08, roughly a day after security-account#49 retagged its own
+    resources.
+
+    `Dyn-AIWorkload` is deliberately NOT here: Billing has still never seen it,
+    because no AI resource carries it yet. It is handled separately by
+    enable_aiworkload_activation. Check with:
+      aws ce list-cost-allocation-tags --tag-keys Dyn-AIWorkload \
+        --region us-east-1 --profile mgt
   EOT
   type        = list(string)
   default = [
-    "owner",
-    "environment",
-    "project",
-    "team",
+    "Owner",
+    "Dyn-Environment",
+    "Dyn-Project",
+    "Dyn-CostCenter",
+    "Dyn-Stage",
+    "Dyn-Team",
     "product",
   ]
 }
 
 variable "legacy_cost_allocation_tag_keys" {
   description = <<-EOT
-    PascalCase keys from the pre-Sep-2026 standard. Kept ACTIVE during the
-    migration so spend on resources that still carry them stays attributable and
-    existing Cost Explorer reports keep working. Removing a key here DEACTIVATES
-    it (new costs stop being grouped under it; history is kept). Remove once no
-    resource uses the old spelling.
+    Superseded key spellings, kept ACTIVE during the migration so spend on
+    resources that still carry them stays attributable and existing Cost
+    Explorer reports keep working.
+
+    Two generations are listed, because the standard was renamed twice:
+      * PascalCase without a prefix (the original standard).
+      * all-lowercase with a `dyn-` prefix (Sep-Oct 2026, short-lived).
+
+    Removing a key here DEACTIVATES it: new costs stop being grouped under it,
+    though history is kept. Only remove a spelling once no resource still uses
+    it -- check with the AWS Config aggregator or Tag Editor, not by assuming.
+
+    Deactivating a spelling is NOT a safe default here. The lowercase
+    unprefixed keys in particular are still carried by real, costly
+    resources: the DCC CDK app tags everything it deploys with `environment`
+    and `project` (~6,000 and ~7,000 resources, per the Config aggregator),
+    so dropping them would silently stop grouping that spend. They stay.
+
+    Only "costcenter", "stage" and "dyn-*" lowercase spellings are absent --
+    Billing has never seen those on any resource, so they cannot be activated
+    at all (an unseen key fails the apply).
   EOT
   type        = list(string)
   default = [
-    "Owner",
+    # Original PascalCase standard. "Owner" is absent here because it is
+    # still part of the CURRENT standard (it never took a prefix), so it
+    # lives in cost_allocation_tag_keys instead.
     "Environment",
     "Project",
     "CostCenter",
     "Stage",
     "Team",
     "Product",
+    # Short-lived all-lowercase generation. Only the spellings Billing has
+    # actually seen are listed; "costcenter" and "stage" never appeared on a
+    # resource, so they are not (and cannot be) activated.
+    "owner",
+    "environment",
+    "project",
+    "team",
   ]
 }
 
